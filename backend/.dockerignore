@@ -1,0 +1,13 @@
+# Local environment and caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local data and secrets: must never be baked into an image
+*.db
+.env
+
+# Docker files themselves aren't needed inside the image
+Dockerfile*
+.dockerignore
