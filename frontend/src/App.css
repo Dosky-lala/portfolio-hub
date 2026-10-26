@@ -1,0 +1,14 @@
+main { max-width: 760px; margin: 0 auto; padding: 24px 16px; }
+.subtitle { opacity: .7; margin-top: -8px; }
+.error { background: #fdecea; color: #8a1c1c; padding: 8px 12px; border-radius: 6px; }
+.add-form { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 24px; }
+.add-form input { padding: 8px; border: 1px solid #8884; border-radius: 6px; flex: 1 1 140px; }
+.add-form input[type=number] { flex: 0 0 64px; }
+button { padding: 8px 14px; border-radius: 6px; border: 1px solid #8886; cursor: pointer; }
+.card { border: 1px solid #8884; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+.card header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.card h2 { font-size: 1.1rem; margin: 0; }
+.progress { font-size: .85rem; opacity: .75; }
+.gate { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.na { opacity: .5; font-style: italic; }
+.danger { color: #b42318; }
