@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Secrets and local config (NEVER commit these)
+.env
+*.pem
+*.key
+
+# Editors / OS
+.vscode/
+.DS_Store
