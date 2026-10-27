@@ -13,8 +13,16 @@ COPY . .
 RUN npm run build
 
 # ---------- Stage 2: serve the built files ----------
-# nginx-unprivileged runs as a non-root user and listens on 8080 by default
+# nginx-unprivileged runs as a non-root user (UID 101) and listens on 8080 by default
 FROM nginxinc/nginx-unprivileged:stable-alpine
+
+# TEMPORARY PATCH (added 2026-10-27): the upstream image ships brotli/curl versions
+# with fixed HIGH CVEs (CVE-2026-111497, CVE-2026-92392). Upgrade ONLY these packages,
+# then drop straight back to the unprivileged user.
+# Remove this block once upstream publishes a rebuilt image (review monthly).
+USER root
+RUN apk upgrade --no-cache brotli-libs curl libcurl
+USER 101
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html

@@ -20,3 +20,14 @@ Environment: WSL2 Ubuntu 26.04, Docker 29.9, ~200 ms latency link.
 | Ships | Node, npm, node_modules, source | static files + Nginx | build tools never ship |
 
 Both images use an Alpine base, so this isolates the effect of the multi-stage build alone.
+
+## Image vulnerabilities (Trivy 0.76.1, HIGH + CRITICAL)
+| Image | Total findings | CRITICAL | Fixable (gate) |
+|---|---|---|---|
+| Backend naive (python:3.14) | 471 | 17 | n/a |
+| Backend v1 (slim, pip removed) | 44 | 0 | 0 |
+| Frontend v1 (patched brotli/curl) | 0 | 0 | 0 |
+
+- Backend: -90% findings vs naive. The 4 Python findings were pip's vendored copies; removing pip from the runtime image eliminated them.
+- Remaining 44 backend findings are Debian packages with no fix released yet (status: affected). Tracked, reviewed monthly.
+- CI gate policy: fail only on FIXABLE HIGH/CRITICAL (--ignore-unfixed). Report everything.
