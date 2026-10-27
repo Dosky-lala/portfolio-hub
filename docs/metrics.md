@@ -10,3 +10,13 @@
 | Cached rebuild | n/a | 6.2 s | ~50x faster |
 
 Environment: WSL2 Ubuntu 26.04, Docker 29.9, ~200 ms latency link.
+
+## Frontend image (single-stage vs multi-stage, same Alpine base)
+| Metric | Naive (node:24-alpine) | Multi-stage (nginx-unprivileged) | Change |
+|---|---|---|---|
+| Compressed size | 110 MB | 25.7 MB | -77% (4.3x) |
+| Disk size | 434 MB | 90.5 MB | -79% (4.8x) |
+| Runs as | root | nginx | least privilege |
+| Ships | Node, npm, node_modules, source | static files + Nginx | build tools never ship |
+
+Both images use an Alpine base, so this isolates the effect of the multi-stage build alone.

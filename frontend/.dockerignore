@@ -1,0 +1,10 @@
+# Dependencies are installed fresh inside the build (npm ci), never copied from the host
+node_modules/
+dist/
+
+# Local env files and logs
+.env*
+*.log
+
+Dockerfile*
+.dockerignore
