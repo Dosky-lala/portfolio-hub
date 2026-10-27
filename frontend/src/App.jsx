@@ -33,17 +33,27 @@ export default function App() {
   const [projects, setProjects] = useState([])
   const [error, setError] = useState('')
   const [form, setForm] = useState({ chapter: '', title: '', repo_url: '' })
+  const [version, setVersion] = useState(0) // bump this to re-fetch the list
 
-  async function load() {
-    try {
-      setProjects(await api('/projects'))
-      setError('')
-    } catch (e) {
-      setError(e.message)
+  const refresh = () => setVersion((v) => v + 1)
+
+  // The ONLY place data is loaded. Re-runs whenever "version" changes.
+  useEffect(() => {
+    let ignore = false // if a newer fetch starts, this one's result is discarded (no stale overwrites)
+    api('/projects')
+      .then((data) => {
+        if (!ignore) {
+          setProjects(data)
+          setError('')
+        }
+      })
+      .catch((e) => {
+        if (!ignore) setError(e.message)
+      })
+    return () => {
+      ignore = true // cleanup: runs before the next fetch starts or when the page unmounts
     }
-  }
-
-  useEffect(() => { load() }, [])
+  }, [version])
 
   async function addProject(e) {
     e.preventDefault()
@@ -57,7 +67,7 @@ export default function App() {
         }),
       })
       setForm({ chapter: '', title: '', repo_url: '' })
-      load()
+      refresh()
     } catch (e) {
       setError(e.message)
     }
@@ -70,7 +80,7 @@ export default function App() {
         method: 'PATCH',
         body: JSON.stringify({ gate: { [key]: !project.gate[key] } }),
       })
-      load()
+      refresh()
     } catch (e) {
       setError(e.message)
     }
@@ -80,7 +90,7 @@ export default function App() {
     if (!confirm(`Delete chapter ${project.chapter}?`)) return
     try {
       await api(`/projects/${project.id}`, { method: 'DELETE' })
-      load()
+      refresh()
     } catch (e) {
       setError(e.message)
     }
