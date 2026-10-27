@@ -1,0 +1,52 @@
+name: portfolio-hub
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      # Postgres 18 changed its data layout: mount the PARENT dir /var/lib/postgresql
+      # (older guides use /var/lib/postgresql/data, which is wrong for v18)
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      # $$ escapes Compose's own ${} substitution, so the CONTAINER's shell expands these
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    # No "ports:" -> unreachable from your machine or network. Only other services can talk to it.
+
+  backend:
+    build: ./backend
+    image: hub-backend:v1
+    environment:
+      # Built from the parts above: the password lives in exactly one place (.env)
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy   # wait until Postgres ANSWERS, not just until it starts
+    healthcheck:
+      # The slim image has no curl, so Python itself calls our /api/health endpoint
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    image: hub-frontend:v1
+    ports:
+      - "127.0.0.1:8080:8080"        # the ONLY published port, and localhost-only
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
