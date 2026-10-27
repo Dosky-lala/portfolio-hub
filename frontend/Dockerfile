@@ -20,7 +20,7 @@ FROM nginxinc/nginx-unprivileged:stable-alpine
 # with fixed HIGH CVEs (CVE-2026-111497, CVE-2026-92392). Upgrade ONLY these packages,
 # then drop straight back to the unprivileged user.
 # Remove this block once upstream publishes a rebuilt image (review monthly).
-USER root
+USER 0
 RUN apk upgrade --no-cache brotli-libs curl libcurl
 USER 101
 
