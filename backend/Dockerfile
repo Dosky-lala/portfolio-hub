@@ -1,5 +1,5 @@
 # ---------- Stage 1: install dependencies ----------
-FROM python:3.14-slim AS builder
+FROM python:3.14-slim@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c AS builder
 WORKDIR /build
 
 # A self-contained virtualenv is easy to copy into the next stage in one piece
@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
  && pip uninstall -y pip
 
 # ---------- Stage 2: runtime ----------
-FROM python:3.14-slim
+FROM python:3.14-slim@sha256:82abc9f53600280b0757126f83c5a7d47088592d2acb6b4c0b9e97f76865508c
 
 # PYTHONUNBUFFERED: logs appear immediately in `docker logs` instead of being buffered
 # PYTHONDONTWRITEBYTECODE: no .pyc clutter in the container
