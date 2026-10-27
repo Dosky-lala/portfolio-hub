@@ -1,0 +1,209 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Least privilege: every job gets read-only access unless it explicitly asks for more
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the older, now-irrelevant run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Tool images pinned by DIGEST (immutable), not by tag. Lesson from the 2026 Trivy compromise.
+  HADOLINT_IMAGE: hadolint/hadolint@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+  TRIVY_IMAGE: ghcr.io/aquasecurity/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Hadolint (Dockerfiles)
+        run: |
+          for f in backend/Dockerfile frontend/Dockerfile; do
+            echo "Linting $f"
+            docker run --rm -i "$HADOLINT_IMAGE" < "$f"
+          done
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      - name: Ruff (Python)
+        working-directory: backend
+        run: |
+          pip install "$(grep -i '^ruff==' requirements-dev.txt)"
+          ruff check .
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: ESLint (React)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run lint
+
+  test:
+    name: Test (pytest + Postgres)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: hub
+          POSTGRES_PASSWORD: testpassword  # throwaway CI-only database, not a real secret
+          POSTGRES_DB: hub_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hub -d hub_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://hub:testpassword@localhost:5432/hub_test
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Install dependencies
+        working-directory: backend
+        run: pip install -r requirements-dev.txt
+
+      - name: Run tests
+        working-directory: backend
+        run: python -m pytest -v
+
+  build:
+    name: Build & scan (${{ matrix.component }})
+    needs: [lint, test]
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        component: [backend, frontend]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: |
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${{ github.repository }}" \
+            --label "org.opencontainers.image.revision=${{ github.sha }}" \
+            -t "hub-${{ matrix.component }}:v1" "${{ matrix.component }}"
+
+      - name: Save image to a file
+        run: docker save "hub-${{ matrix.component }}:v1" -o "hub-${{ matrix.component }}.tar"
+
+      - name: Vulnerability gate (fixable HIGH/CRITICAL fail the build)
+        run: |
+          docker run --rm -v "$PWD:/scan:ro" "$TRIVY_IMAGE" image \
+            --input "/scan/hub-${{ matrix.component }}.tar" \
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+
+      - name: Keep the scanned image for the next jobs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-${{ matrix.component }}
+          path: hub-${{ matrix.component }}.tar
+          retention-days: 1
+
+  smoke:
+    name: Smoke test (full stack)
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Load the scanned images
+        run: |
+          docker load -i hub-backend.tar
+          docker load -i hub-frontend.tar
+
+      - name: Create .env with a random password
+        run: |
+          cp .env.example .env
+          sed -i "s/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=$(openssl rand -hex 16)/" .env
+
+      - name: Start the stack and wait until healthy
+        run: docker compose up -d --no-build --wait --wait-timeout 120
+
+      - name: End-to-end checks through Nginx
+        run: |
+          curl -fsS localhost:8080/api/health
+          curl -fsS -X POST localhost:8080/api/projects \
+            -H 'Content-Type: application/json' \
+            -d '{"chapter":1,"title":"CI smoke test"}'
+          curl -fsS localhost:8080/ | grep -q "<title>Portfolio Hub</title>"
+
+      - name: Show logs if anything failed
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
+
+  publish:
+    name: Publish to GHCR
+    needs: [build, smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write   # the ONLY job allowed to push images
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Load the scanned images
+        run: |
+          docker load -i hub-backend.tar
+          docker load -i hub-frontend.tar
+
+      - name: Log in to GHCR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Tag with the commit SHA and push
+        run: |
+          owner="${GITHUB_REPOSITORY_OWNER,,}"   # GHCR names must be lowercase
+          for c in backend frontend; do
+            ref="ghcr.io/${owner}/portfolio-hub-${c}:${GITHUB_SHA}"
+            docker tag "hub-${c}:v1" "$ref"
+            docker push "$ref"
+            echo "Pushed \`$ref\`" >> "$GITHUB_STEP_SUMMARY"
+          done
