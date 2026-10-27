@@ -31,3 +31,11 @@ Both images use an Alpine base, so this isolates the effect of the multi-stage b
 - Backend: -90% findings vs naive. The 4 Python findings were pip's vendored copies; removing pip from the runtime image eliminated them.
 - Remaining 44 backend findings are Debian packages with no fix released yet (status: affected). Tracked, reviewed monthly.
 - CI gate policy: fail only on FIXABLE HIGH/CRITICAL (--ignore-unfixed). Report everything.
+
+## CI pipeline (GitHub Actions, first green run)
+| Metric | Value |
+|---|---|
+| Total duration (lint, test, build+scan x2, smoke, publish) | 2m 27s |
+| Tests | 13 passed |
+| Vulnerability gate | fixable HIGH/CRITICAL = 0 (both images) |
+| Images published | ghcr.io/dosky-lala/portfolio-hub-{backend,frontend}:<commit-sha> |
