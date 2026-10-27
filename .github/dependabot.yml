@@ -1,0 +1,46 @@
+# Dependabot keeps every pinned dependency fresh via PRs that CI must pass before merge.
+version: 2
+updates:
+  # GitHub Actions: bumps the pinned commit SHA AND its "# vX.Y.Z" comment together
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions-minor-patch:
+        update-types: [minor, patch]   # majors arrive as separate PRs for individual review
+
+  # Python dependencies (backend/requirements.txt and requirements-dev.txt)
+  - package-ecosystem: pip
+    directory: "/backend"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      python-minor-patch:
+        update-types: [minor, patch]
+
+  # JavaScript dependencies (frontend/package.json + package-lock.json)
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      npm-minor-patch:
+        update-types: [minor, patch]
+
+  # Base images in both Dockerfiles (pinned as tag@digest)
+  - package-ecosystem: docker
+    directories: ["/backend", "/frontend"]
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: build
+      include: scope
