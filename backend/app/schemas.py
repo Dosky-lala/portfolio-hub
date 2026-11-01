@@ -29,7 +29,7 @@ class GateUpdate(BaseModel):
 
 
 class ProjectCreate(BaseModel):
-    chapter: int = Field(ge=1)
+    chapter: int = Field(ge=0)
     title: str = Field(min_length=1, max_length=200)
     repo_url: HttpUrl | None = None
     post_url: HttpUrl | None = None
