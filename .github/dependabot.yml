@@ -49,3 +49,6 @@ updates:
       # (odd-numbered majors never become LTS). Minor/patch/digest updates still flow.
       - dependency-name: "node"
         update-types: ["version-update:semver-major"]
+      # Python "minor" releases (3.14 -> 3.15) are feature releases: adopt deliberately
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
