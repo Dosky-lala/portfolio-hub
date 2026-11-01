@@ -44,3 +44,8 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    ignore:
+      # Node LTS upgrades are a deliberate decision, not an automated PR
+      # (odd-numbered majors never become LTS). Minor/patch/digest updates still flow.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
