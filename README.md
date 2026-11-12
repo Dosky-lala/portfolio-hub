@@ -148,3 +148,5 @@ docs/                      Metrics, postmortems
 Built by **Chris Ihetu** as part of a learning-in-public DevOps portfolio.
 
 [Check LinkedIn Profile](https://www.linkedin.com/in/chris-ihetu-68b566236)
+
+Chapter 1 write-up: [docs/chapters/01-containerize.md](docs/chapters/01-containerize.md) · Launch post: [LinkedIn](https://lnkd.in/p/erjeucSq) · Portfolio index: [docs/portfolio-index.md](docs/portfolio-index.md)
