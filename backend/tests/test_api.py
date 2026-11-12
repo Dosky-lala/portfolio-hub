@@ -32,7 +32,7 @@ def test_duplicate_chapter_returns_409(client):
     {"chapter": 0, "title": "x"},                           # chapter must be >= 1
     {"chapter": 1, "title": ""},                            # title can't be empty
     {"chapter": 1, "title": "x", "repo_url": "not-a-url"},  # must be a real URL
-])
+], ids=["chapter-zero", "empty-title", "invalid-repo-url"])
 def test_invalid_create_returns_422(client, payload):
     assert client.post("/api/projects", json=payload).status_code == 422
 
@@ -53,7 +53,7 @@ def test_patch_gate_changes_only_the_sent_box(client):
     {"gate": {"runs_verfied": True}},  # typo in a gate key
     {"chapter": 2},                    # chapter can't be changed after creation
     {"title": None},                   # explicit null title
-])
+], ids=["typo-in-gate-key", "chapter-is-immutable", "null-title"])
 def test_invalid_patch_returns_422(client, payload):
     pid = make(client).json()["id"]
     assert client.patch(f"/api/projects/{pid}", json=payload).status_code == 422
