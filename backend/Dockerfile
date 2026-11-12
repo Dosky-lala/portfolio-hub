@@ -1,5 +1,5 @@
 # ---------- Stage 1: install dependencies ----------
-FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8 AS builder
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f AS builder
 WORKDIR /build
 
 # A self-contained virtualenv is easy to copy into the next stage in one piece
@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt \
  && pip uninstall -y pip
 
 # ---------- Stage 2: runtime ----------
-FROM python:3.14-slim@sha256:cd89c30eda26ee911a4611b18680086e0ea42e6f5f8cbe653d07fa7958c9cec8
+FROM python:3.14-slim@sha256:9aaa474097d094040649f2162a627c0049b408f52138d980916788d80f04802f
 
 # PYTHONUNBUFFERED: logs appear immediately in `docker logs` instead of being buffered
 # PYTHONDONTWRITEBYTECODE: no .pyc clutter in the container
@@ -24,8 +24,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 # Unprivileged user with a fixed UID, and remove the base image's own pip:
 # no package manager in the runtime image means an intruder can't install tools
+# Also apply all available Debian security updates (Debian 13 stable ships only
+# bug/security fixes). Base images lag behind CVE fixes; the CI gate scans every build.
 RUN useradd --uid 10001 --no-create-home --shell /usr/sbin/nologin appuser \
- && python -m pip uninstall -y pip
+ && python -m pip uninstall -y pip \
+ && apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY --from=builder /opt/venv /opt/venv
