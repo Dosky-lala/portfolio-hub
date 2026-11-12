@@ -16,12 +16,14 @@ RUN npm run build
 # nginx-unprivileged runs as a non-root user (UID 101) and listens on 8080 by default
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
 
-# TEMPORARY PATCH (added 2026-10-27): the upstream image ships brotli/curl versions
-# with fixed HIGH CVEs (CVE-2026-111497, CVE-2026-92392). Upgrade ONLY these packages,
-# then drop straight back to the unprivileged user.
-# Remove this block once upstream publishes a rebuilt image (review monthly).
+# Apply ALL available Alpine security fixes at build time. Safe because the image
+# is pinned to the Alpine 3.24 stable branch, which ships only bug/security fixes.
+# Upstream base images lag behind CVE fixes; this keeps shipped images patched
+# between Dependabot base-image bumps. Every build is still scanned by the CI gate.
+# History: 2026-10-27 targeted patch (brotli, curl); 2026-11-11 expat/musl/zlib CVEs
+# -> targeted list replaced with a full upgrade (see troubleshooting log #16).
 USER 0
-RUN apk upgrade --no-cache brotli-libs curl libcurl
+RUN apk upgrade --no-cache
 USER 101
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf
