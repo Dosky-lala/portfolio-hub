@@ -1,0 +1,15 @@
+# The app's single HTTP entry point. HTTPRoutes attach to it later.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: portfolio-hub
+  namespace: portfolio-hub
+spec:
+  gatewayClassName: eg
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same    # only routes in this namespace may attach

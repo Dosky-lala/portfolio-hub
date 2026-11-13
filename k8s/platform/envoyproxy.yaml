@@ -1,0 +1,22 @@
+# Tells Envoy Gateway how to expose its proxy on kind (no cloud load balancer exists).
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: EnvoyProxy
+metadata:
+  name: kind-nodeport
+  namespace: envoy-gateway-system
+spec:
+  provider:
+    type: Kubernetes
+    kubernetes:
+      envoyService:
+        type: NodePort
+        # Default is Local, which drops traffic arriving on a node without an Envoy pod.
+        # kind maps 8080 to the control-plane node, while Envoy runs on the worker.
+        externalTrafficPolicy: Cluster
+        patch:
+          type: StrategicMerge
+          value:
+            spec:
+              ports:
+                - port: 80          # the Gateway listener port (merge key)
+                  nodePort: 30080   # must match containerPort in kind-config.yaml
