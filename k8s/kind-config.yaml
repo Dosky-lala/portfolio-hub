@@ -1,0 +1,14 @@
+# kind cluster for Portfolio Hub (Chapter 2).
+# Port mappings can ONLY be set at creation time; changing them means recreating the cluster.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: portfolio-hub
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # Browser -> 127.0.0.1:8080 -> NodePort 30080 (Envoy Gateway's proxy, configured later)
+      - containerPort: 30080
+        hostPort: 8080
+        listenAddress: "127.0.0.1"   # localhost only, same posture as Chapter 1
+        protocol: TCP
+  - role: worker                     # app pods schedule here; 2 nodes fit the 6 GB budget
