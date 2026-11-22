@@ -20,6 +20,18 @@ services:
     restart: unless-stopped
     # No "ports:" -> unreachable from your machine or network. Only other services can talk to it.
 
+  migrate:
+    # One-shot: applies database migrations, then exits. Same image as the backend.
+    build: ./backend
+    image: hub-backend:v1
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"   # must NOT restart: it's meant to finish
+
   backend:
     build: ./backend
     image: hub-backend:v1
@@ -29,6 +41,8 @@ services:
     depends_on:
       db:
         condition: service_healthy   # wait until Postgres ANSWERS, not just until it starts
+      migrate:
+        condition: service_completed_successfully   # schema is ready before the app starts
     healthcheck:
       # The slim image has no curl, so Python itself calls our /api/health endpoint
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
@@ -42,7 +56,7 @@ services:
     build: ./frontend
     image: hub-frontend:v1
     ports:
-      - "127.0.0.1:8080:8080"        # the ONLY published port, and localhost-only
+      - "127.0.0.1:${HUB_PORT:-8080}:8080"   # the ONLY published port, localhost-only (HUB_PORT overrides)
     depends_on:
       backend:
         condition: service_healthy

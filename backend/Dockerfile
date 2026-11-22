@@ -37,6 +37,10 @@ COPY --from=builder /opt/venv /opt/venv
 
 # Code stays owned by root: the app user can READ it but not modify it
 COPY app ./app
+# Migrations ship in the same image: the Kubernetes migration Job runs
+# `alembic upgrade head` from this exact, scanned image.
+COPY alembic.ini ./
+COPY migrations ./migrations
 
 # Numeric UID: Kubernetes can only verify runAsNonRoot with a number, not a name
 USER 10001

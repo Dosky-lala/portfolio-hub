@@ -1,4 +1,3 @@
-from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
@@ -6,35 +5,34 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from .db import Base, engine, get_db
+from .db import get_db
 from .models import Project
 from .schemas import ProjectCreate, ProjectOut, ProjectUpdate
 
 # One reusable type: "a database session, provided per request by get_db".
-# Annotated puts Depends in the TYPE, not the default value (FastAPI's recommended style).
 DbSession = Annotated[Session, Depends(get_db)]
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Chapter 1 shortcut: create tables on startup.
-    # Known gap -> replaced by proper migrations (Kubernetes Job) in Chapter 2.
-    Base.metadata.create_all(bind=engine)
-    yield
-
-
+# Schema is managed by Alembic migrations (run once, before the app starts),
+# not by create_all at startup.
 app = FastAPI(
     title="Portfolio Hub API",
-    lifespan=lifespan,
     docs_url="/api/docs",
     openapi_url="/api/openapi.json",
     redoc_url=None,
 )
 
 
+@app.get("/api/livez")
+def livez():
+    """Liveness: can this process serve requests at all?
+    Deliberately does NOT touch the database: a database outage must never
+    make Kubernetes restart otherwise healthy pods."""
+    return {"status": "alive"}
+
+
 @app.get("/api/health")
 def health(response: Response, db: DbSession):
-    """Healthy only if the database answers. 503 lets orchestrators detect 'alive but useless'."""
+    """Readiness: healthy only if the database answers. 503 = take me out of rotation."""
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "db": "ok"}
@@ -68,7 +66,6 @@ def create_project(payload: ProjectCreate, db: DbSession):
         db.commit()
     except IntegrityError as err:
         db.rollback()
-        # "from err" keeps the original database error attached for debugging
         raise HTTPException(
             status.HTTP_409_CONFLICT, f"Chapter {payload.chapter} already exists"
         ) from err
@@ -84,8 +81,7 @@ def update_project(project_id: int, payload: ProjectUpdate, db: DbSession):
     for field, value in changes.items():
         setattr(project, field, value)
     if gate_changes:
-        # Assign a NEW dict: SQLAlchemy doesn't notice in-place edits to a JSON column,
-        # so mutating project.gate directly would silently never save.
+        # Assign a NEW dict: SQLAlchemy doesn't notice in-place edits to a JSON column.
         project.gate = {**project.gate, **gate_changes}
     db.commit()
     db.refresh(project)

@@ -76,3 +76,9 @@ def test_list_is_ordered_by_chapter(client):
         make(client, chapter=ch)
     chapters = [p["chapter"] for p in client.get("/api/projects").json()]
     assert chapters == [1, 2, 3]
+
+
+def test_livez_reports_alive(client):
+    r = client.get("/api/livez")
+    assert r.status_code == 200
+    assert r.json() == {"status": "alive"}
