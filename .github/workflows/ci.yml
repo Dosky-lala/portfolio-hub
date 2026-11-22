@@ -92,6 +92,12 @@ jobs:
         working-directory: backend
         run: pip install -r requirements-dev.txt
 
+      - name: Migrations apply cleanly and match the models
+        working-directory: backend
+        run: |
+          alembic upgrade head
+          alembic check
+
       - name: Run tests
         working-directory: backend
         run: python -m pytest -v

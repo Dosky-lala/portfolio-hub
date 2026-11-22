@@ -19,8 +19,11 @@ from app.main import app  # noqa: E402
 
 @pytest.fixture
 def client():
-    """A fresh, empty database for every single test."""
+    """A fresh, empty schema for every single test.
+    Tests build the schema from the models; the migrations themselves are
+    verified separately with `alembic upgrade head` + `alembic check`."""
     Base.metadata.drop_all(bind=engine)
-    with TestClient(app) as c:  # "with" runs the app's startup, which creates the tables
+    Base.metadata.create_all(bind=engine)
+    with TestClient(app) as c:
         yield c
     Base.metadata.drop_all(bind=engine)
