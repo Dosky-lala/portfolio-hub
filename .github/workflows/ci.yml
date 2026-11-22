@@ -128,7 +128,7 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/scan:ro" "$TRIVY_IMAGE" image \
             --input "/scan/hub-${{ matrix.component }}.tar" \
-            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1
+            --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --ignorefile /scan/.trivyignore.yaml --exit-code 1
 
       - name: Keep the scanned image for the next jobs
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

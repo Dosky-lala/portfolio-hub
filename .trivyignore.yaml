@@ -1,0 +1,29 @@
+# Time-boxed vulnerability exceptions. Every entry needs a reason and an expiry.
+# When an entry expires, the CI gate fails again: that is intentional.
+#
+# 2026-11-22: nginx 1.30.6 (nginx.org build in nginxinc/nginx-unprivileged:stable-alpine).
+# Fixed in 1.30.7, but upstream has not rebuilt the image yet, and Alpine's own 1.30.7 is a
+# different build (with version-pinned nginx.org modules), so swapping it in is unsafe.
+# Exposure: we serve plain HTTP/1.1 only; mail proxy, HTTP/2, HTTP/3, TLS and resolver
+# are not enabled. Container is non-root (UID 101) and published on 127.0.0.1 only.
+# Exit: merge Dependabot's nginx-unprivileged digest bump once it ships 1.30.7, then delete these.
+# Owner: Chris Ihetu
+vulnerabilities:
+  - id: CVE-2026-113425
+    statement: "nginx mail proxy UAF; mail proxy not enabled. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
+  - id: CVE-2026-121810
+    statement: "nginx HTTP/3 UAF; HTTP/3 not enabled. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
+  - id: CVE-2026-123007
+    statement: "nginx HTTP/2 flow control; HTTP/2 not enabled. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
+  - id: CVE-2026-123633
+    statement: "nginx HTTP/2 UAF; HTTP/2 not enabled. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
+  - id: CVE-2026-118899
+    statement: "nginx TLS DoS; TLS not terminated by this nginx. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
+  - id: CVE-2026-123634
+    statement: "nginx resolver UAF; no resolver directive configured. Awaiting upstream 1.30.7."
+    expired_at: 2026-12-06
